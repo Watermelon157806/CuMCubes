@@ -22,36 +22,52 @@ __global__ void count_vertices_faces_kernel(
 
     // traverse throught x-y-z axis
     const float density_self = density_grid[x][y][z];
+    if(std::isnan(density_self)) {return;}
     const bool inside = density_self > thresh;
 
     // ** vertices
     // x-axis
     if (x < res_x - 1) {
         const float density_x_next = density_grid[x + 1][y][z];
-        const bool inside_x_next = (density_x_next > thresh);
-        if (inside != inside_x_next) {
-            atomicAdd(counters, 1);
+        if(!std::isnan(density_x_next)) {
+            const bool inside_x_next = (density_x_next > thresh);
+            if (inside != inside_x_next) {
+                atomicAdd(counters, 1);
+            }
         }
     }
     // y-axis
     if (y < res_y - 1) {
         const float density_y_next = density_grid[x][y + 1][z];
-        const bool inside_y_next = (density_y_next > thresh);
-        if (inside != inside_y_next) {
-            atomicAdd(counters, 1);
+        if(!std::isnan(density_y_next)) {
+            const bool inside_y_next = (density_y_next > thresh);
+            if (inside != inside_y_next) {
+                atomicAdd(counters, 1);
+            }
         }
     }
     // z-axis
     if (z < res_z - 1) {
         const float density_z_next = density_grid[x][y][z + 1];
-        const bool inside_z_next = (density_z_next > thresh);
-        if (inside != inside_z_next) {
-            atomicAdd(counters, 1);
+        if(!std::isnan(density_z_next)) {
+            const bool inside_z_next = (density_z_next > thresh);
+            if (inside != inside_z_next) {
+                atomicAdd(counters, 1);
+            }
         }
     }
 
     // ** faces
     if (x < res_x - 1 && y < res_y - 1 && z < res_z - 1) {
+        if (std::isnan(density_grid[x][y][z]))             { return; }
+        if (std::isnan(density_grid[x + 1][y][z]))         { return; }
+        if (std::isnan(density_grid[x + 1][y + 1][z]))     { return; }
+        if (std::isnan(density_grid[x][y + 1][z]))         { return; }
+        if (std::isnan(density_grid[x][y][z + 1]))         { return; }
+        if (std::isnan(density_grid[x + 1][y][z + 1]))     { return; }
+        if (std::isnan(density_grid[x + 1][y + 1][z + 1])) { return; }
+        if (std::isnan(density_grid[x][y + 1][z + 1]))     { return; }
+
         uint8_t mask = 0;
         if (density_grid[x][y][z]             > thresh) { mask |= 1; }
         if (density_grid[x + 1][y][z]         > thresh) { mask |= 2; }
@@ -94,46 +110,53 @@ __global__ void gen_vertices_kernel(
 
     // traverse throught x-y-z axis
     const float density_self = density_grid[x][y][z];
+    if(std::isnan(density_self)) {return;}
     const bool inside = density_self > thresh;
 
     // ** vertices
     // x-axis
     if (x < res_x - 1) {
         const float density_x_next = density_grid[x + 1][y][z];
-        const bool inside_x_next = (density_x_next > thresh);
-        if (inside != inside_x_next) {
-            int32_t vidx = atomicAdd(counters, 1);
-            const float dt = (thresh - density_self) / (density_x_next - density_self);
-            vertex_grid[x][y][z][0] = vidx + 1;
-            vertices[vidx][0] = static_cast<float>(x) + dt;
-            vertices[vidx][1] = static_cast<float>(y);
-            vertices[vidx][2] = static_cast<float>(z);
+        if(!std::isnan(density_x_next)) {
+            const bool inside_x_next = (density_x_next > thresh);
+            if (inside != inside_x_next) {
+                int32_t vidx = atomicAdd(counters, 1);
+                const float dt = (thresh - density_self) / (density_x_next - density_self);
+                vertex_grid[x][y][z][0] = vidx + 1;
+                vertices[vidx][0] = static_cast<float>(x) + dt;
+                vertices[vidx][1] = static_cast<float>(y);
+                vertices[vidx][2] = static_cast<float>(z);
+            }
         }
     }
     // y-axis
     if (y < res_y - 1) {
         const float density_y_next = density_grid[x][y + 1][z];
-        const bool inside_y_next = (density_y_next > thresh);
-        if (inside != inside_y_next) {
-            int32_t vidx = atomicAdd(counters, 1);
-            const float dt = (thresh - density_self) / (density_y_next - density_self);
-            vertex_grid[x][y][z][1] = vidx + 1;
-            vertices[vidx][0] = static_cast<float>(x);
-            vertices[vidx][1] = static_cast<float>(y) + dt;
-            vertices[vidx][2] = static_cast<float>(z);
+        if(!std::isnan(density_y_next)) {
+            const bool inside_y_next = (density_y_next > thresh);
+            if (inside != inside_y_next) {
+                int32_t vidx = atomicAdd(counters, 1);
+                const float dt = (thresh - density_self) / (density_y_next - density_self);
+                vertex_grid[x][y][z][1] = vidx + 1;
+                vertices[vidx][0] = static_cast<float>(x);
+                vertices[vidx][1] = static_cast<float>(y) + dt;
+                vertices[vidx][2] = static_cast<float>(z);
+            }
         }
     }
     // z-axis
     if (z < res_z - 1) {
         const float density_z_next = density_grid[x][y][z + 1];
-        const bool inside_z_next = (density_z_next > thresh);
-        if (inside != inside_z_next) {
-            int32_t vidx = atomicAdd(counters, 1);
-            const float dt = (thresh - density_self) / (density_z_next - density_self);
-            vertex_grid[x][y][z][2] = vidx + 1;
-            vertices[vidx][0] = static_cast<float>(x);
-            vertices[vidx][1] = static_cast<float>(y);
-            vertices[vidx][2] = static_cast<float>(z) + dt;
+        if(!std::isnan(density_z_next)) {
+            const bool inside_z_next = (density_z_next > thresh);
+            if (inside != inside_z_next) {
+                int32_t vidx = atomicAdd(counters, 1);
+                const float dt = (thresh - density_self) / (density_z_next - density_self);
+                vertex_grid[x][y][z][2] = vidx + 1;
+                vertices[vidx][0] = static_cast<float>(x);
+                vertices[vidx][1] = static_cast<float>(y);
+                vertices[vidx][2] = static_cast<float>(z) + dt;
+            }
         }
     }
 }
@@ -155,6 +178,15 @@ __global__ void gen_faces_kernel(
                   res_y = density_grid.size(1),
                   res_z = density_grid.size(2);
     if (x >= res_x - 1 || y >= res_y - 1 || z >= res_z - 1) { return; }
+
+    if (std::isnan(density_grid[x][y][z]))             { return; }
+    if (std::isnan(density_grid[x + 1][y][z]))         { return; }
+    if (std::isnan(density_grid[x + 1][y + 1][z]))     { return; }
+    if (std::isnan(density_grid[x][y + 1][z]))         { return; }
+    if (std::isnan(density_grid[x][y][z + 1]))         { return; }
+    if (std::isnan(density_grid[x + 1][y][z + 1]))     { return; }
+    if (std::isnan(density_grid[x + 1][y + 1][z + 1])) { return; }
+    if (std::isnan(density_grid[x][y + 1][z + 1]))     { return; }
 
     // traverse throught x-y-z axis
     const float density_self = density_grid[x][y][z];
