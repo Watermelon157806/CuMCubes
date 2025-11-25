@@ -5,7 +5,7 @@
 
 
 __global__ void count_vertices_faces_kernel(
-    const torch::PackedTensorAccessor32<float, 3, torch::RestrictPtrTraits> density_grid,
+    const torch::PackedTensorAccessor64<float, 3, torch::RestrictPtrTraits> density_grid,
     const float thresh,
     // output
     int32_t* __restrict__ counters
@@ -91,11 +91,11 @@ __global__ void count_vertices_faces_kernel(
 
 
 __global__ void gen_vertices_kernel(
-    const torch::PackedTensorAccessor32<float, 3, torch::RestrictPtrTraits> density_grid,
+    const torch::PackedTensorAccessor64<float, 3, torch::RestrictPtrTraits> density_grid,
     const float thresh,
     // output
-    torch::PackedTensorAccessor32<int32_t, 4, torch::RestrictPtrTraits> vertex_grid,
-    torch::PackedTensorAccessor32<float, 2, torch::RestrictPtrTraits> vertices,
+    torch::PackedTensorAccessor64<int32_t, 4, torch::RestrictPtrTraits> vertex_grid,
+    torch::PackedTensorAccessor64<float, 2, torch::RestrictPtrTraits> vertices,
     int32_t* __restrict__ counters
 ) {
 	const int32_t x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -163,10 +163,10 @@ __global__ void gen_vertices_kernel(
 
 
 __global__ void gen_faces_kernel(
-    const torch::PackedTensorAccessor32<float, 3, torch::RestrictPtrTraits> density_grid,
+    const torch::PackedTensorAccessor64<float, 3, torch::RestrictPtrTraits> density_grid,
     const float thresh,
     // output
-    torch::PackedTensorAccessor32<int32_t, 4, torch::RestrictPtrTraits> vertex_grid,
+    torch::PackedTensorAccessor64<int32_t, 4, torch::RestrictPtrTraits> vertex_grid,
     int32_t* __restrict__ faces,
     int32_t* __restrict__ counters
 ) {
@@ -260,7 +260,7 @@ std::vector<torch::Tensor> mc::marching_cubes_wrapper(
 
     // count only
 	count_vertices_faces_kernel<<<blocks, threads>>>(
-        density_grid.packed_accessor32<float, 3, torch::RestrictPtrTraits>(),
+        density_grid.packed_accessor64<float, 3, torch::RestrictPtrTraits>(),
         thresh,
         // output
         counters.data_ptr<int32_t>());
@@ -279,19 +279,19 @@ std::vector<torch::Tensor> mc::marching_cubes_wrapper(
 
     // generate vertices
     gen_vertices_kernel<<<blocks, threads>>>(
-        density_grid.packed_accessor32<float, 3, torch::RestrictPtrTraits>(),
+        density_grid.packed_accessor64<float, 3, torch::RestrictPtrTraits>(),
         thresh,
         // output
-        vertex_grid.packed_accessor32<int32_t, 4, torch::RestrictPtrTraits>(),
-        vertices.packed_accessor32<float, 2, torch::RestrictPtrTraits>(),
+        vertex_grid.packed_accessor64<int32_t, 4, torch::RestrictPtrTraits>(),
+        vertices.packed_accessor64<float, 2, torch::RestrictPtrTraits>(),
         counters.data_ptr<int32_t>() + 2);
 
     // generate faces
     gen_faces_kernel<<<blocks, threads>>>(
-        density_grid.packed_accessor32<float, 3, torch::RestrictPtrTraits>(),
+        density_grid.packed_accessor64<float, 3, torch::RestrictPtrTraits>(),
         thresh,
         // output
-        vertex_grid.packed_accessor32<int32_t, 4, torch::RestrictPtrTraits>(),
+        vertex_grid.packed_accessor64<int32_t, 4, torch::RestrictPtrTraits>(),
         faces.data_ptr<int32_t>(),
         counters.data_ptr<int32_t>() + 2);
 
