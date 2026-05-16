@@ -1,4 +1,5 @@
 #include "utils.cuh"
+#include <ATen/cuda/CUDAContext.h>
 
 
 // BEGIN KERNELS
@@ -259,7 +260,7 @@ std::vector<torch::Tensor> mc::marching_cubes_wrapper(
     const dim3 blocks = {blocks_x, blocks_y, blocks_z};
 
     // count only
-	count_vertices_faces_kernel<<<blocks, threads>>>(
+	count_vertices_faces_kernel<<<blocks, threads, 0, at::cuda::getCurrentCUDAStream()>>>(
         density_grid.packed_accessor64<float, 3, torch::RestrictPtrTraits>(),
         thresh,
         // output
@@ -278,7 +279,7 @@ std::vector<torch::Tensor> mc::marching_cubes_wrapper(
         torch::TensorOptions().dtype(torch::kInt).device(curr_device));
 
     // generate vertices
-    gen_vertices_kernel<<<blocks, threads>>>(
+    gen_vertices_kernel<<<blocks, threads, 0, at::cuda::getCurrentCUDAStream()>>>(
         density_grid.packed_accessor64<float, 3, torch::RestrictPtrTraits>(),
         thresh,
         // output
@@ -287,7 +288,7 @@ std::vector<torch::Tensor> mc::marching_cubes_wrapper(
         counters.data_ptr<int32_t>() + 2);
 
     // generate faces
-    gen_faces_kernel<<<blocks, threads>>>(
+    gen_faces_kernel<<<blocks, threads, 0, at::cuda::getCurrentCUDAStream()>>>(
         density_grid.packed_accessor64<float, 3, torch::RestrictPtrTraits>(),
         thresh,
         // output
@@ -312,4 +313,3 @@ std::vector<torch::Tensor> mc::marching_cubes_wrapper(
     
     return results;
 }
-
