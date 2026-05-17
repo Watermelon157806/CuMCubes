@@ -36,18 +36,20 @@ std::vector<torch::Tensor> mc::marching_cubes_func(
     const float thresh,
     const std::vector<float> lower,
     const std::vector<float> upper,
-    const py::object &func
+    const py::object &func,
+    const int64_t device_id
 ) {
     // check
-    CHECK_CONTIGUOUS(sample_points);
-    // CHECK_INPUT(sample_points);
+    CHECK_CPU_INPUT(sample_points);
+    TORCH_CHECK(sample_points.dtype() == torch::kFloat32);
     TORCH_CHECK(sample_points.ndimension() == 4);
-    torch::Device curr_device = sample_points.device();
+    TORCH_CHECK(sample_points.size(3) == 3);
+    TORCH_CHECK(device_id >= 0);
     const int32_t res_x = sample_points.size(0), res_y = sample_points.size(1), res_z = sample_points.size(2);
     const int32_t offx = res_y * res_z, offy = res_z;
     
     torch::Tensor density_grid = torch::zeros({res_x, res_y, res_z},
-        torch::TensorOptions().dtype(torch::kFloat).device(curr_device));
+        torch::TensorOptions().dtype(torch::kFloat).device(torch::kCPU));
 
     const float* sample_points_ptr = sample_points.data_ptr<float>();
     float* density_grid_ptr = density_grid.data_ptr<float>();
@@ -71,8 +73,9 @@ std::vector<torch::Tensor> mc::marching_cubes_func(
     const float l[3] = {lower[0], lower[1], lower[2]};
     const float u[3] = {upper[0], upper[1], upper[2]};
 
-    density_grid = density_grid.to(torch::kCUDA);
-    c10::cuda::CUDAGuard device_guard(density_grid.device());
+    const auto device_index = static_cast<c10::DeviceIndex>(device_id);
+    c10::cuda::CUDAGuard device_guard(c10::Device(c10::kCUDA, device_index));
+    density_grid = density_grid.to(torch::TensorOptions().dtype(torch::kFloat).device(torch::Device(torch::kCUDA, device_index)));
     std::vector<Tensor> results = mc::marching_cubes_wrapper(density_grid, thresh, l, u);
     
     return results;

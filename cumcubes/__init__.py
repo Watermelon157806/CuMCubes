@@ -14,7 +14,8 @@ def marching_cubes(
     thresh: float,
     scale: Optional[Union[float, Sequence]]=None,
     verbose: bool=False,
-    cpu: bool=False
+    cpu: bool=False,
+    device: Optional[Union[str, torch.device]]=None
 ) -> Tuple[torch.Tensor]:
     """python wrapper of marching cubes
 
@@ -57,13 +58,24 @@ def marching_cubes(
         vertices = torch.tensor(vertices)
         faces = torch.tensor(faces.astype(np.int64))
     else:
-        # process density_grid
-        if isinstance(density_grid, np.ndarray): density_grid = torch.tensor(density_grid)
-        density_grid = density_grid.cuda()
-        density_grid = density_grid.to(torch.float32)
-
-        if (density_grid.shape[0] < 2 or density_grid.shape[1] < 2 or density_grid.shape[2] < 2):
-            raise ValueError()
+        if isinstance(density_grid, np.ndarray):
+            assert device is not None, "numpy density_grid requires an explicit CUDA device"
+            device = torch.device(device)
+            assert device.type == "cuda" and device.index is not None, device
+            density_grid = torch.as_tensor(density_grid, device=device)
+        assert torch.is_tensor(density_grid), "CUDA marching_cubes expects a tensor or numpy array"
+        if density_grid.is_cuda:
+            if device is not None:
+                device = torch.device(device)
+                assert density_grid.device == device, f"density_grid must be on {device}, got {density_grid.device}"
+        else:
+            assert device is not None, "CPU density_grid requires an explicit CUDA device"
+            device = torch.device(device)
+            assert device.type == "cuda" and device.index is not None, device
+            density_grid = density_grid.to(device)
+        density_grid = density_grid.to(torch.float32).contiguous()
+        assert density_grid.ndim == 3, density_grid.shape
+        assert density_grid.shape[0] >= 2 and density_grid.shape[1] >= 2 and density_grid.shape[2] >= 2, density_grid.shape
 
         vertices, faces = _C.marching_cubes(density_grid, thresh, lower, upper)
     
@@ -82,7 +94,8 @@ def marching_cubes_func(
     func: Callable=lambda x, y, z: x**2 + y**2 + z**2,
     thresh: float=16,
     verbose: bool=False,
-    cpu: bool=False
+    cpu: bool=False,
+    device: Optional[Union[str, torch.device]]=None
 ) -> Tuple[torch.Tensor]:
     """python wrapper of marching cubes via the given function
 
@@ -123,14 +136,17 @@ def marching_cubes_func(
         vertices = torch.tensor(vertices)
         faces = torch.tensor(faces.astype(np.int64))
     else:
+        assert device is not None, "CUDA marching_cubes_func expects an explicit CUDA device"
+        device = torch.device(device)
+        assert device.type == "cuda" and device.index is not None, device
         # get the sample grid
         x = torch.linspace(lower[0], upper[0], num_x)
         y = torch.linspace(lower[0], upper[0], num_y)
         z = torch.linspace(lower[0], upper[0], num_z)
         X, Y, Z = torch.meshgrid(x, y, z, indexing="ij")
-        sample_points = torch.stack((X, Y, Z), dim=-1).reshape(num_x, num_y, num_z, 3)
+        sample_points = torch.stack((X, Y, Z), dim=-1).reshape(num_x, num_y, num_z, 3).contiguous()
 
-        vertices, faces = _C.marching_cubes_func(sample_points, thresh, lower, upper, func)
+        vertices, faces = _C.marching_cubes_func(sample_points, thresh, lower, upper, func, device.index)
     
     if verbose:
         print(f"#vertices={vertices.shape[0]}\n")

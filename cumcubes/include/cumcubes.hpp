@@ -23,7 +23,8 @@ namespace mc
         const float,
         const std::vector<float>,
         const std::vector<float>,
-        const py::object&);
+        const py::object&,
+        const int64_t);
 
     void save_mesh_as_ply(const std::string, Tensor, Tensor, Tensor);
 } // namespace mc(marching cube)
@@ -45,4 +46,3 @@ namespace mc
 #define CHECK_CPU_INPUT(x)  \
     CHECK_CPU(x);           \
     CHECK_CONTIGUOUS(x)
-
