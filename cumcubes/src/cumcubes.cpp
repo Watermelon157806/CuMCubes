@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <iostream>
 #include <pybind11/functional.h>
+#include <c10/cuda/CUDAGuard.h>
 
 #include "cumcubes.hpp"
 
@@ -15,7 +16,8 @@ std::vector<torch::Tensor> mc::marching_cubes(
 ) {
     // check
     CHECK_INPUT(density_grid);
-    TORCH_CHECK(density_grid.ndimension() == 3)
+    TORCH_CHECK(density_grid.ndimension() == 3);
+    c10::cuda::CUDAGuard device_guard(density_grid.device());
 
     assert(lower.size() == 3);
     assert(upper.size() == 3);
@@ -70,6 +72,7 @@ std::vector<torch::Tensor> mc::marching_cubes_func(
     const float u[3] = {upper[0], upper[1], upper[2]};
 
     density_grid = density_grid.to(torch::kCUDA);
+    c10::cuda::CUDAGuard device_guard(density_grid.device());
     std::vector<Tensor> results = mc::marching_cubes_wrapper(density_grid, thresh, l, u);
     
     return results;
@@ -125,4 +128,3 @@ void mc::save_mesh_as_ply(
 
     ply_file.close();
 }
-
